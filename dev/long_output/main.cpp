@@ -8,6 +8,8 @@ using steady_clock = std::chrono::steady_clock;
 
 namespace asio_ns = restinio::asio_ns;
 
+using router_t = restinio::router::express_router_t<>;
+
 // Type of output.
 using output_t = restinio::chunked_output_t;
 
@@ -16,14 +18,17 @@ using response_t = restinio::response_builder_t<output_t>;
 
 struct response_data {
 	asio_ns::io_context & io_ctx_;
+	std::size_t chunk_size_;
 	response_t response_;
 	int counter_;
 
 	response_data(
 		asio_ns::io_context & io_ctx,
+		std::size_t chunk_size,
 		response_t response,
 		int counter)
 		: io_ctx_{io_ctx}
+		, chunk_size_{chunk_size}
 		, response_{std::move(response)}
 		, counter_{counter}
 	{}
@@ -31,8 +36,7 @@ struct response_data {
 
 using response_data_shptr = std::shared_ptr<response_data>;
 
-std::string make_buffer(std::size_t size)
-{
+std::string make_buffer(std::size_t size) {
 	std::string buffer;
 	buffer.reserve(size);
 
@@ -69,7 +73,7 @@ auto make_done_handler(response_data_shptr data) {
 }
 
 void send_next_portion(response_data_shptr data) {
-	data->response_.append_chunk(make_buffer(100*1024));
+	data->response_.append_chunk(make_buffer(data->chunk_size_));
 
 	if(0 == data->counter_) {
 		data->response_.flush();
@@ -83,10 +87,12 @@ void send_next_portion(response_data_shptr data) {
 
 void request_processor(
 		asio_ns::io_context & ctx,
+		std::size_t chunk_size,
 		restinio::request_handle_t req) {
 	// Start processing of a new request.
 	auto data = std::make_shared<response_data>(
 			ctx,
+			chunk_size,
 			req->create_response<output_t>(),
 			6000);
 
@@ -103,10 +109,22 @@ void request_processor(
 	send_next_portion(data);
 }
 
+auto make_router(asio_ns::io_context & ctx) {
+	auto router = std::make_unique<router_t>();
+
+	router->http_get("/", [&ctx](auto req, auto) {
+			request_processor(ctx, 100u*1024u, std::move(req));
+			return restinio::request_accepted();
+		});
+
+	return router;
+}
+
 int main() {
 	// Traits for our simple server.
-	struct traits_t : public restinio::default_traits_t {
-		using logger_t = restinio::shared_ostream_logger_t;
+	struct traits_t : public restinio::default_single_thread_traits_t {
+		using logger_t = restinio::single_threaded_ostream_logger_t;
+		using request_handler_t = router_t;
 	};
 
 	asio_ns::io_context io_ctx;
@@ -117,16 +135,7 @@ int main() {
 			.port(8080)
 			.address("localhost")
 			.write_http_response_timelimit(60s)
-			.request_handler([&io_ctx](auto req) {
-				// Handle only HTTP GET requests for the root.
-				if(restinio::http_method_get() == req->header().method() &&
-						"/" == req->header().path()) {
-					request_processor(io_ctx, std::move(req));
-					return restinio::request_accepted();
-				}
-				else
-					return restinio::request_rejected();
-			}));
+			.request_handler(make_router(io_ctx)));
 
 	return 0;
 }
