@@ -20,13 +20,13 @@ struct response_data {
 	asio_ns::io_context & io_ctx_;
 	std::size_t chunk_size_;
 	response_t response_;
-	int counter_;
+	std::size_t counter_;
 
 	response_data(
 		asio_ns::io_context & io_ctx,
 		std::size_t chunk_size,
 		response_t response,
-		int counter)
+		std::size_t counter)
 		: io_ctx_{io_ctx}
 		, chunk_size_{chunk_size}
 		, response_{std::move(response)}
@@ -75,12 +75,12 @@ auto make_done_handler(response_data_shptr data) {
 void send_next_portion(response_data_shptr data) {
 	data->response_.append_chunk(make_buffer(data->chunk_size_));
 
-	if(0 == data->counter_) {
+	if(1u == data->counter_) {
 		data->response_.flush();
 		data->response_.done();
 	}
 	else {
-		data->counter_ -= 1;
+		data->counter_ -= 1u;
 		data->response_.flush(make_done_handler(data));
 	}
 }
@@ -88,13 +88,14 @@ void send_next_portion(response_data_shptr data) {
 void request_processor(
 		asio_ns::io_context & ctx,
 		std::size_t chunk_size,
+		std::size_t count,
 		restinio::request_handle_t req) {
 	// Start processing of a new request.
 	auto data = std::make_shared<response_data>(
 			ctx,
 			chunk_size,
 			req->create_response<output_t>(),
-			6000);
+			count);
 
 	// Make necessary response headers.
 	data->response_
@@ -119,7 +120,7 @@ auto make_router(asio_ns::io_context & ctx) {
 	auto router = std::make_unique<router_t>();
 
 	router->http_get("/", [&ctx](auto req, auto) {
-			request_processor(ctx, 100u*1024u, std::move(req));
+			request_processor(ctx, 100u*1024u, 10000u, std::move(req));
 			return restinio::request_accepted();
 		});
 
@@ -132,7 +133,24 @@ auto make_router(asio_ns::io_context & ctx) {
 					multiplier(params["multiplier"]);
 
 			if(0u != chunk_size) {
-				request_processor(ctx, chunk_size, std::move(req));
+				request_processor(ctx, chunk_size, 10000u, std::move(req));
+				return restinio::request_accepted();
+			}
+			else
+				return restinio::request_rejected();
+		});
+
+	router->http_get(
+				R"(/:value(\d+):multiplier([MmKkBb]?)/:count(\d+))",
+				[&ctx](auto req, auto params) {
+
+			const auto chunk_size =
+					restinio::cast_to<std::size_t>(params["value"]) *
+					multiplier(params["multiplier"]);
+			const auto count = restinio::cast_to<std::size_t>(params["count"]);
+
+			if(0u != chunk_size && 0u != count) {
+				request_processor(ctx, chunk_size, count, std::move(req));
 				return restinio::request_accepted();
 			}
 			else
