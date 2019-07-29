@@ -109,12 +109,34 @@ void request_processor(
 	send_next_portion(data);
 }
 
+std::size_t multiplier(const restinio::string_view_t sv) {
+	if(sv.empty() || "B" == sv || "b" == sv) return 1u;
+	else if("K" == sv || "k" == sv) return 1024u;
+	else return 1024u*1024u;
+}
+
 auto make_router(asio_ns::io_context & ctx) {
 	auto router = std::make_unique<router_t>();
 
 	router->http_get("/", [&ctx](auto req, auto) {
 			request_processor(ctx, 100u*1024u, std::move(req));
 			return restinio::request_accepted();
+		});
+
+	router->http_get(
+				R"(/:value(\d+):multiplier([MmKkBb]?))",
+				[&ctx](auto req, auto params) {
+
+			const auto chunk_size =
+					restinio::cast_to<std::size_t>(params["value"]) *
+					multiplier(params["multiplier"]);
+
+			if(0u != chunk_size) {
+				request_processor(ctx, chunk_size, std::move(req));
+				return restinio::request_accepted();
+			}
+			else
+				return restinio::request_rejected();
 		});
 
 	return router;
