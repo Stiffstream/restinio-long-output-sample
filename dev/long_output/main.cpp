@@ -4,10 +4,13 @@
 
 using namespace std::chrono_literals;
 
+// Type of clock to be used in the code.
 using steady_clock = std::chrono::steady_clock;
 
+// Just for convenience.
 namespace asio_ns = restinio::asio_ns;
 
+// Short alias for express-like router.
 using router_t = restinio::router::express_router_t<>;
 
 // Type of output.
@@ -16,6 +19,7 @@ using output_t = restinio::chunked_output_t;
 // Type of response builder.
 using response_t = restinio::response_builder_t<output_t>;
 
+// Description of processed response.
 struct response_data {
 	asio_ns::io_context & io_ctx_;
 	std::size_t chunk_size_;
@@ -34,6 +38,7 @@ struct response_data {
 	{}
 };
 
+// Just an alias for shared_ptr.
 using response_data_shptr = std::shared_ptr<response_data>;
 
 std::string make_buffer(std::size_t size) {
