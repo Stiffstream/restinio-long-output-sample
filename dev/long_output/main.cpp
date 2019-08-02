@@ -1,7 +1,5 @@
 #include <restinio/all.hpp>
 
-#include <random>
-
 using namespace std::chrono_literals;
 
 // Type of clock to be used in the code.
