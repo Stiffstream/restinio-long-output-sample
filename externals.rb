@@ -2,6 +2,7 @@ MxxRu::arch_externals :restinio do |e|
   e.url 'https://bitbucket.org/sobjectizerteam/restinio/downloads/restinio-0.5.1.1.tar.bz2'
 
   e.map_dir 'dev/restinio' => 'dev'
+  e.map_file 'dev/nodejs/http_parser/CMakeLists.txt' => 'dev/nodejs/http_parser/*'
 end
 
 MxxRu::arch_externals :asio do |e|
