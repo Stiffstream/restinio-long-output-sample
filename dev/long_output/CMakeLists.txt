@@ -2,12 +2,22 @@ cmake_minimum_required(VERSION 3.10)
 
 set(PRJ long_output)
 
-project(${PRJ})
+project(${PRJ} CXX)
 
 add_executable(${PRJ} main.cpp)
-target_link_libraries(${PRJ} restinio::restinio)
+target_link_libraries(${PRJ} PRIVATE restinio::restinio)
 
-target_include_directories(${PRJ} PUBLIC "${CMAKE_SOURCE_DIR}/dev/asio/include")
+if (UNIX)
+	set(THREADS_PREFER_PTHREAD_FLAG ON)
+	find_package(Threads)
+	if (Threads_FOUND)
+		target_link_libraries(${PRJ} PRIVATE Threads::Threads)
+	endif ()
+endif ()
+
+if (WIN32)
+        target_link_libraries(${PRJ} PRIVATE wsock32 ws2_32)
+endif ()
 
 install(
 	TARGETS ${PRJ}
