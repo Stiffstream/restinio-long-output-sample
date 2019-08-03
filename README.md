@@ -25,7 +25,7 @@ It this case you need to have Ruby + MxxRu + various utilities which every Linux
 3. Do hg clone: `hg clone https://bitbucket.org/sobjectizerteam/restinio-long-output-sample`
 4. Go into appropriate folder: `cd restinio-long-output-sample`
 5. Run command `mxxruexternals`
-6. Wait while add dependencies will be downloaded.
+6. Wait while all dependencies will be downloaded.
 
 Then go to `dev` subfolder, compile and run.
 
