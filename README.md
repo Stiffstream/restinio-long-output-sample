@@ -39,7 +39,7 @@ A well known chain of actions:
 cd restinio-long-output-sample/dev
 mkdir cmake_build
 cd cmake_build
-cmake -DCMAKE_INSTALL_PREFIX=target -DCMAKE_BUILD_TYPE=release ..
+cmake -DCMAKE_INSTALL_PREFIX=target -DCMAKE_BUILD_TYPE=release -DRESTINIO_FIND_DEPS=OFF ..
 cmake --build . --config Release
 cmake --build . --config Release --target install
 ~~~~~
