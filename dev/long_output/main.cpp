@@ -1,4 +1,5 @@
 #include <restinio/all.hpp>
+#include <restinio/router/easy_parser_router.hpp>
 
 using namespace std::chrono_literals;
 
@@ -9,7 +10,10 @@ using steady_clock = std::chrono::steady_clock;
 namespace asio_ns = restinio::asio_ns;
 
 // Short alias for express-like router.
-using router_t = restinio::router::express_router_t<>;
+using router_t = restinio::router::easy_parser_router_t;
+
+// A short name for restinio::router::easy_parser_router namespace.
+namespace epr = restinio::router::easy_parser_router;
 
 // Type of output.
 using output_t = restinio::chunked_output_t;
@@ -113,48 +117,67 @@ void request_processor(
 	send_next_portion(data);
 }
 
-std::size_t extract_chunk_size(const restinio::router::route_params_t & params) {
-	const auto multiplier = [](const auto sv) noexcept -> std::size_t {
-		if(sv.empty() || "B" == sv || "b" == sv) return 1u;
-		else if("K" == sv || "k" == sv) return 1024u;
-		else return 1024u*1024u;
-	};
+struct distribution_params
+{
+	std::size_t size_value_{1u};
+	std::size_t size_multiplier_{1u};
 
-	return restinio::cast_to<std::size_t>(params["value"]) *
-			multiplier(params["multiplier"]);
-}
+	std::size_t count_{10000u};
+
+	std::size_t chunk_size() const noexcept
+	{
+		return size_value_ * size_multiplier_;
+	}
+
+	std::size_t count() const noexcept
+	{
+		return count_;
+	}
+};
 
 auto make_router(asio_ns::io_context & ctx) {
 	auto router = std::make_unique<router_t>();
 
-	router->http_get("/", [&ctx](auto req, auto) {
+	router->add_handler(restinio::http_method_get(),
+			epr::root(), [&ctx](const auto & req, auto) {
 			request_processor(ctx, 100u*1024u, 10000u, std::move(req));
 			return restinio::request_accepted();
 		});
 
-	router->http_get(
-				R"(/:value(\d+):multiplier([MmKkBb]?))",
-				[&ctx](auto req, auto params) {
+	constexpr std::size_t one_byte = 1u;
+	constexpr std::size_t one_kib = 1024u * one_byte;
+	constexpr std::size_t one_mib = 1024u * one_kib;
 
-			const auto chunk_size = extract_chunk_size(params);
-
-			if(0u != chunk_size) {
-				request_processor(ctx, chunk_size, 10000u, std::move(req));
-				return restinio::request_accepted();
-			}
-			else
-				return restinio::request_rejected();
-		});
-
-	router->http_get(
-				R"(/:value(\d+):multiplier([MmKkBb]?)/:count(\d+))",
-				[&ctx](auto req, auto params) {
-
-			const auto chunk_size = extract_chunk_size(params);
-			const auto count = restinio::cast_to<std::size_t>(params["count"]);
-
-			if(0u != chunk_size && 0u != count) {
-				request_processor(ctx, chunk_size, count, std::move(req));
+	router->add_handler(restinio::http_method_get(),
+				epr::produce<distribution_params>(
+					epr::slash(),
+					epr::non_negative_decimal_number_producer<std::size_t>()
+						>> &distribution_params::size_value_,
+					epr::maybe(
+						epr::produce<std::size_t>(
+							epr::alternatives(
+								epr::caseless_symbol_producer('b')
+									>> epr::just(one_byte) >> epr::as_result(),
+								epr::caseless_symbol_producer('k')
+									>> epr::just(one_kib) >> epr::as_result(),
+								epr::caseless_symbol_producer('m')
+									>> epr::just(one_mib) >> epr::as_result()
+							)
+						) >> &distribution_params::size_multiplier_
+					),
+					epr::maybe(
+						epr::slash(),
+						epr::non_negative_decimal_number_producer<std::size_t>()
+							>> &distribution_params::count_
+					)
+				),
+				[&ctx](auto req, const auto & params) {
+			if(0u != params.chunk_size()) {
+				request_processor(
+						ctx,
+						params.chunk_size(),
+						params.count(),
+						std::move(req));
 				return restinio::request_accepted();
 			}
 			else
