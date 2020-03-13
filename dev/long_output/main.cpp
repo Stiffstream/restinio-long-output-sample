@@ -152,8 +152,7 @@ auto make_router(asio_ns::io_context & ctx) {
 						)
 					) >> &chunk_size::m_
 				)
-			) >> epr::convert(
-					[](chunk_size cs) { return std::size_t{cs.c_} * cs.m_; })
+			) >> epr::convert([](auto cs) { return std::size_t{cs.c_} * cs.m_; })
 				>> &distribution_params::chunk_size_,
 			epr::maybe(
 				epr::slash(),

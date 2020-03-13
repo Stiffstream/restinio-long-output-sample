@@ -1,5 +1,5 @@
 MxxRu::arch_externals :restinio do |e|
-  e.url 'https://github.com/Stiffstream/restinio/archive/12fa128d53508e3d89b5e9ffe467510cb283c237.tar.gz'
+  e.url 'https://github.com/Stiffstream/restinio/archive/663ceb659987a1f247d259902a7ee91a189f4f06.tar.gz'
 
   e.map_dir 'dev/restinio' => 'dev'
   e.map_file 'dev/nodejs/http_parser/CMakeLists.txt' => 'dev/nodejs/http_parser/*'
