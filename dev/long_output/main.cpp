@@ -119,64 +119,58 @@ void request_processor(
 
 struct distribution_params
 {
-	std::size_t size_value_{1u};
-	std::size_t size_multiplier_{1u};
-
+	std::size_t chunk_size_{100u*1024u};
 	std::size_t count_{10000u};
-
-	std::size_t chunk_size() const noexcept
-	{
-		return size_value_ * size_multiplier_;
-	}
-
-	std::size_t count() const noexcept
-	{
-		return count_;
-	}
 };
 
 auto make_router(asio_ns::io_context & ctx) {
 	auto router = std::make_unique<router_t>();
 
 	router->add_handler(restinio::http_method_get(),
-			epr::root(), [&ctx](const auto & req, auto) {
-			request_processor(ctx, 100u*1024u, 10000u, std::move(req));
+		epr::root(),
+		[&ctx](const auto & req, auto)
+		{
+			distribution_params params; // Use default values.
+			request_processor(ctx, params.chunk_size_, params.count_, std::move(req));
 			return restinio::request_accepted();
 		});
 
-	constexpr std::size_t one_byte = 1u;
-	constexpr std::size_t one_kib = 1024u * one_byte;
-	constexpr std::size_t one_mib = 1024u * one_kib;
+	struct chunk_size { std::uint32_t c_{1u}, m_{1u}; };
 
 	router->add_handler(restinio::http_method_get(),
-				epr::produce<distribution_params>(
-					epr::slash(),
-					epr::non_negative_decimal_number_producer<std::size_t>()
-						>> &distribution_params::size_value_,
-					epr::maybe(
-						epr::produce<std::size_t>(
-							epr::alternatives(
-								epr::caseless_symbol_producer('b')
-									>> epr::just(one_byte) >> epr::as_result(),
-								epr::caseless_symbol_producer('k')
-									>> epr::just(one_kib) >> epr::as_result(),
-								epr::caseless_symbol_producer('m')
-									>> epr::just(one_mib) >> epr::as_result()
-							)
-						) >> &distribution_params::size_multiplier_
-					),
-					epr::maybe(
-						epr::slash(),
-						epr::non_negative_decimal_number_producer<std::size_t>()
-							>> &distribution_params::count_
-					)
-				),
-				[&ctx](auto req, const auto & params) {
-			if(0u != params.chunk_size()) {
+		epr::produce<distribution_params>(
+			epr::slash(),
+			epr::produce<chunk_size>(
+				epr::non_negative_decimal_number_producer<std::uint32_t>()
+					>> &chunk_size::c_,
+				epr::maybe(
+					epr::produce<std::uint32_t>(
+						epr::alternatives(
+							epr::caseless_symbol_producer('b')
+								>> epr::just_result(1u),
+							epr::caseless_symbol_producer('k')
+								>> epr::just_result(1024u),
+							epr::caseless_symbol_producer('m')
+								>> epr::just_result(1024u * 1024u)
+						)
+					) >> &chunk_size::m_
+				)
+			) >> epr::convert(
+					[](chunk_size cs) { return std::size_t{cs.c_} * cs.m_; })
+				>> &distribution_params::chunk_size_,
+			epr::maybe(
+				epr::slash(),
+				epr::non_negative_decimal_number_producer<std::size_t>()
+					>> &distribution_params::count_
+			)
+		),
+		[&ctx](auto req, const auto & params)
+		{
+			if(0u != params.chunk_size_) {
 				request_processor(
 						ctx,
-						params.chunk_size(),
-						params.count(),
+						params.chunk_size_,
+						params.count_,
 						std::move(req));
 				return restinio::request_accepted();
 			}
