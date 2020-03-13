@@ -141,17 +141,14 @@ auto make_router(asio_ns::io_context & ctx) {
 		epr::produce<distribution_params>(
 			epr::slash(),
 			epr::produce<chunk_size>(
-				epr::non_negative_decimal_number_producer<std::uint32_t>()
+				epr::non_negative_decimal_number_p<std::uint32_t>()
 					>> &chunk_size::c_,
 				epr::maybe(
 					epr::produce<std::uint32_t>(
 						epr::alternatives(
-							epr::caseless_symbol_producer('b')
-								>> epr::just_result(1u),
-							epr::caseless_symbol_producer('k')
-								>> epr::just_result(1024u),
-							epr::caseless_symbol_producer('m')
-								>> epr::just_result(1024u * 1024u)
+							epr::caseless_symbol_p('b') >> epr::just_result(1u),
+							epr::caseless_symbol_p('k') >> epr::just_result(1024u),
+							epr::caseless_symbol_p('m') >> epr::just_result(1024u * 1024u)
 						)
 					) >> &chunk_size::m_
 				)
@@ -160,7 +157,7 @@ auto make_router(asio_ns::io_context & ctx) {
 				>> &distribution_params::chunk_size_,
 			epr::maybe(
 				epr::slash(),
-				epr::non_negative_decimal_number_producer<std::size_t>()
+				epr::non_negative_decimal_number_p<std::size_t>()
 					>> &distribution_params::count_
 			)
 		),
