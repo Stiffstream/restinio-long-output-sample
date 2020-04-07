@@ -12,9 +12,6 @@ namespace asio_ns = restinio::asio_ns;
 // Short alias for express-like router.
 using router_t = restinio::router::easy_parser_router_t;
 
-// A short name for restinio::router::easy_parser_router namespace.
-namespace epr = restinio::router::easy_parser_router;
-
 // Type of output.
 using output_t = restinio::chunked_output_t;
 
@@ -117,50 +114,47 @@ void request_processor(
 	send_next_portion(data);
 }
 
-struct distribution_params
-{
-	std::size_t chunk_size_{100u*1024u};
-	std::size_t count_{10000u};
-};
-
 auto make_router(asio_ns::io_context & ctx) {
+	using namespace restinio::router::easy_parser_router;
+
 	auto router = std::make_unique<router_t>();
 
-	router->add_handler(restinio::http_method_get(),
-		epr::root(),
-		[&ctx](const auto & req, auto)
-		{
-			distribution_params params; // Use default values.
-			request_processor(ctx, params.chunk_size_, params.count_, std::move(req));
-			return restinio::request_accepted();
-		});
-
+	struct distribution_params
+	{
+		std::size_t chunk_size_{100u*1024u};
+		std::size_t count_{10000u};
+	};
 	struct chunk_size { std::uint32_t c_{1u}, m_{1u}; };
 
-	router->add_handler(restinio::http_method_get(),
-		epr::produce<distribution_params>(
-			epr::slash(),
-			epr::produce<chunk_size>(
-				epr::non_negative_decimal_number_p<std::uint32_t>()
-					>> &chunk_size::c_,
-				epr::maybe(
-					epr::produce<std::uint32_t>(
-						epr::alternatives(
-							epr::caseless_symbol_p('b') >> epr::just_result(1u),
-							epr::caseless_symbol_p('k') >> epr::just_result(1024u),
-							epr::caseless_symbol_p('m') >> epr::just_result(1024u * 1024u)
+	router->http_get(
+		path_to_params(
+			produce<distribution_params>(
+				exact("/"),
+				maybe(
+					produce<chunk_size>(
+						non_negative_decimal_number_p<std::uint32_t>()
+							>> &chunk_size::c_,
+						maybe(
+							produce<std::uint32_t>(
+								alternatives(
+									caseless_symbol_p('b') >> just_result(1u),
+									caseless_symbol_p('k') >> just_result(1024u),
+									caseless_symbol_p('m') >> just_result(1024u * 1024u)
+								)
+							) >> &chunk_size::m_
 						)
-					) >> &chunk_size::m_
+					) >> convert(
+							[](auto cs) { return std::size_t{cs.c_} * cs.m_; })
+						>> &distribution_params::chunk_size_,
+					maybe(
+						exact("/"),
+						non_negative_decimal_number_p<std::size_t>()
+							>> &distribution_params::count_
+					)
 				)
-			) >> epr::convert([](auto cs) { return std::size_t{cs.c_} * cs.m_; })
-				>> &distribution_params::chunk_size_,
-			epr::maybe(
-				epr::slash(),
-				epr::non_negative_decimal_number_p<std::size_t>()
-					>> &distribution_params::count_
 			)
 		),
-		[&ctx](auto req, const auto & params)
+		[&ctx](const auto & req, const auto & params )
 		{
 			if(0u != params.chunk_size_) {
 				request_processor(
