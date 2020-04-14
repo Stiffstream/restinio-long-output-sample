@@ -1,5 +1,5 @@
 MxxRu::arch_externals :restinio do |e|
-  e.url 'https://github.com/Stiffstream/restinio/releases/download/v.0.6.2/restinio-0.6.2.zip'
+  e.url 'https://github.com/Stiffstream/restinio/releases/download/v.0.6.6/restinio-0.6.6.zip'
 
   e.map_dir 'dev/restinio' => 'dev'
   e.map_file 'dev/nodejs/http_parser/CMakeLists.txt' => 'dev/nodejs/http_parser/*'
@@ -31,7 +31,7 @@ MxxRu::arch_externals :nodejs_http_parser_mxxru do |e|
 end
 
 MxxRu::arch_externals :fmt do |e|
-  e.url 'https://github.com/fmtlib/fmt/archive/6.0.0.zip'
+  e.url 'https://github.com/fmtlib/fmt/archive/6.1.2.zip'
 
   e.map_dir 'include' => 'dev/fmt'
   e.map_dir 'src' => 'dev/fmt'

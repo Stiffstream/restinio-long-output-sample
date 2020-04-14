@@ -14,4 +14,5 @@ add_subdirectory(fmt)
 add_subdirectory(restinio)
 
 add_subdirectory(long_output)
+add_subdirectory(long_output_epr)
 

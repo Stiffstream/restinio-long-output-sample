@@ -26,5 +26,6 @@ MxxRu::Cpp::composite_target( MxxRu::BUILD_ROOT ) {
 	end
 
 	required_prj 'long_output/prj.rb'
+	required_prj 'long_output_epr/prj.rb'
 }
 
