@@ -1,12 +1,12 @@
 MxxRu::arch_externals :restinio do |e|
-  e.url 'https://github.com/Stiffstream/restinio/releases/download/v.0.6.6/restinio-0.6.6.zip'
+  e.url 'https://github.com/Stiffstream/restinio/releases/download/v.0.6.11/restinio-0.6.11.zip'
 
   e.map_dir 'dev/restinio' => 'dev'
   e.map_file 'dev/nodejs/http_parser/CMakeLists.txt' => 'dev/nodejs/http_parser/*'
 end
 
 MxxRu::arch_externals :asio do |e|
-  e.url 'https://github.com/chriskohlhoff/asio/archive/asio-1-14-0.tar.gz'
+  e.url 'https://github.com/chriskohlhoff/asio/archive/asio-1-18-0.tar.gz'
 
   e.map_dir 'asio/include' => 'dev/asio'
 end
@@ -18,7 +18,7 @@ MxxRu::arch_externals :asio_mxxru do |e|
 end
 
 MxxRu::arch_externals :nodejs_http_parser do |e|
-  e.url 'https://github.com/nodejs/http-parser/archive/v2.9.2.tar.gz'
+  e.url 'https://github.com/nodejs/http-parser/archive/v2.9.4.tar.gz'
 
   e.map_file 'http_parser.h' => 'dev/nodejs/http_parser/*'
   e.map_file 'http_parser.c' => 'dev/nodejs/http_parser/*'
@@ -31,7 +31,7 @@ MxxRu::arch_externals :nodejs_http_parser_mxxru do |e|
 end
 
 MxxRu::arch_externals :fmt do |e|
-  e.url 'https://github.com/fmtlib/fmt/archive/6.1.2.zip'
+  e.url 'https://github.com/fmtlib/fmt/archive/7.0.3.zip'
 
   e.map_dir 'include' => 'dev/fmt'
   e.map_dir 'src' => 'dev/fmt'
